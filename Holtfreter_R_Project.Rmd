@@ -1,0 +1,1371 @@
+---
+title: "Factors that Influence Wine Preference"
+author: "Rob Holtfreter"
+date: "4/18/2021"
+output:rmarkdown::github_document
+ 
+---
+```{r setup, include=FALSE}
+
+
+
+
+```
+```{r include=FALSE}
+library("ggplot2")
+library("knitr")
+library("dplyr")
+library("corrplot")
+library("moments") 
+library("car")
+library("ggpubr")
+library("tidyverse")
+library("pscl")
+library("caret")
+library("InformationValue")
+library("RColorBrewer")
+library("scatterplot3d")
+library("lattice")
+library("scatterplot3d")
+```
+This report explores the biochemical factors associated with wine preference scores for approximately 5,000 white wines. 
+
+
+```{r include=FALSE}
+dat = read.csv("wineQualityWhites.csv")
+tmpdata = subset(dat, select = -c(X))
+datum=data.frame(tmpdata)
+#Creating a copy of the data.
+datum1 = datum
+#Converting quality into a categorical variable.
+datum$quality = factor(datum$quality)
+
+```
+
+
+# Univariate Plot Section
+
+I will start my analysis by looking at the sample size and number of variables.
+
+```{r echo=FALSE}
+nrow(datum)
+ncol(datum)
+```
+The data includes 4,898 white wines (n = 4,898), and 12 variables.
+
+Here is a brief view of the data:
+```{r}
+head(datum)
+```
+
+
+The following table provides descriptive statistics for the variables in the dataset.
+
+```{r echo=FALSE}
+summary(datum)
+```
+
+Many of the medians are to the right of the means. Also, many of the max values appear to be much greater than the means, indicating the presence of outliers.
+
+"Quality" is really more of a categorical response variable. I'm going to convert "quality" into a factor and take a look at it first.
+```{r echo=FALSE}
+summary(datum$quality)
+```
+None of the experts gave a wine a perfect 10 and no one gave a wine a rating of 1 or 2 either. The frequency of the ratings from 3 to 9 seem to fit a normal distribution, with the majority in the 5 - 7 range and fewer in the tails.
+
+```{r echo=FALSE}
+barplot(summary(datum$quality),main = "Frequency of Wine Scores ", 
+        xlab = "Wine Quality Score", ylab = "Frequency", col = "blue")
+```
+
+To account for there being very little data in the tails (see above), I'm going to creating a binary response variable called "goodorbad" by assigning "0" to wines with a quality score less than 6, and "1" to wines with a score greater than six.
+```{r echo=FALSE}
+#Creating a new variable "goodorbad", which is a binary simplification of the 
+#wine quality score. A wine with a median rating of 6 or higher is considered 
+#"good", 5 or lower is considered "bad"
+datum1$goodorbad = ifelse(datum1$quality <6,0,1)
+datum1$goodorbad = factor(datum1$goodorbad)
+```
+```{r echo=FALSE}
+
+summary(datum1$goodorbad)
+ 
+```
+
+In the above summary of the new variable I created, "goodorbad", there are 1,640 wines that were rated "bad", and 3,258 wines that were rated "good". Ideally, I would like to have a more even split.
+
+
+Returning to the descriptive statistics, I noticed that many of the independent variables have a broad range, with max values that are much greater than the mean. The mean for each independent variable falls to the right of the median as well. This suggests the data may be positively skewed or there may be outliers in the dataset. 
+
+
+The following boxplots show the distribution of the independent variables in the dataset. Please note that all of the independent variables include outliers, with the exception of alcohol. 
+```{r echo=FALSE}
+boxplot(datum$fixed.acidity, main="Fixed Acidity", col = "red")
+```
+
+
+Boxplot showing the distribution of Fixed Acidity. Note the presence of outliers.
+
+```{r echo=FALSE}
+boxplot(datum$volatile.acidity, main="Volatile Acidity", col = "red")
+```
+
+
+Boxplot showing the distribution of Volatile Acidity. Note the presence of outliers.
+
+```{r echo=FALSE}
+boxplot(datum$citric.acid, main="Citric Acid", col = "red")
+```
+
+
+Boxplot showing the distribution of Citric Acid. Note the presence of outliers.
+```{r echo=FALSE}
+boxplot(datum$residual.sugar, main="Residual Sugar", col = "red")
+```
+
+
+
+Boxplot showing the distribution of Residual Sugar. Note the presence of outliers.
+```{r echo=FALSE}
+boxplot(datum$chlorides, main="Chlorides", col = "red")
+```
+
+
+Boxplot showing the distribution of Chlorides. Note the presence of outliers.
+```{r echo=FALSE}
+boxplot(datum$free.sulfur.dioxide, main="Free Sulfur Dioxide", col = "red")
+```
+
+
+Boxplot showing the distribution of Free Sulfur Dioxide. Note the presence of outliers.
+```{r echo=FALSE}
+boxplot(datum$total.sulfur.dioxide, main="Total Sulfur Dioxide", col = "red")
+```
+
+
+Boxplot showing the distribution of Total Sulfur Dioxide. Note the presence of outliers.
+```{r echo=FALSE}
+boxplot(datum$density, main = "Density", col = "red")
+```
+
+
+Boxplot showing the distribution of Density. Note the presence of outliers.
+```{r echo=FALSE}
+boxplot(datum$pH, main="pH", col = "red")
+```
+
+
+Boxplot showing the distribution of pH. Note the presence of outliers.
+```{r echo=FALSE}
+boxplot(datum$sulphates, main="Sulphates", col = "red")
+```
+
+
+Boxplot showing the distribution of Sulphates. Note the presence of outliers.
+```{r echo=FALSE}
+boxplot(datum$alcoho, main="Alcohol", col = "red")
+```
+
+
+Boxplot showing the distribution of Alcohol. This variable appears normal, without outliers.
+
+
+
+All of the independent variables except for "alcohol" include positive outliers. 
+
+The following histograms and density plots will examine the shape of the data. In other words, I'm looking to see if the data visually approximates a normal distribution.
+
+
+```{r echo=FALSE}
+hist(datum$fixed.acidity, main="Fixed Acidity", col = "blue")
+```
+
+
+Histogram showing the distribution of Fixed Acidity. The data appears approximately normal.
+
+```{r echo=FALSE}
+hist(datum$volatile.acidity, main="Volatile Acidity", col = "blue")
+```
+
+Histogram showing the distribution of Volatile Acidity. The data appears positively skewed.
+
+
+```{r echo=FALSE}
+hist(datum$citric.acid, main="Citric Acid", col = "blue")
+```
+
+Histogram showing the distribution of Citric Acid. The data appears positively skewed.
+
+
+```{r echo=FALSE}
+hist(datum$residual.sugar, main="Residual Sugar", col = "blue")
+```
+
+
+Histogram showing the distribution of Residual Sugar. The data appears positively skewed.
+
+```{r echo=FALSE}
+hist(datum$chlorides, main="Chlorides", col = "blue")
+```
+
+
+Histogram showing the distribution of Chlorides. The data appears approximately normal.
+
+```{r echo=FALSE}
+hist(datum$free.sulfur.dioxide, main="Free Sulfur Dioxide", col = "blue")
+```
+
+
+Histogram showing the distribution of Free Sulfur Dioxide. The data appears positively skewed.
+
+```{r echo=FALSE}
+hist(datum$total.sulfur.dioxide, main="Total Sulfur Dioxide", col = "blue")
+```
+
+
+Histogram showing the distribution of Total Sulfur Dioxide. The data appears approximately normal.
+
+```{r echo=FALSE}
+hist(datum$density, main = "Density", col = "blue")
+```
+
+
+Histogram showing the distribution of Density. The data appears approximately normal.
+
+```{r echo=FALSE}
+hist(datum$pH, main = "pH", col = "blue")
+```
+
+
+Histogram showing the distribution of pH. The data appears approximately normal.
+
+```{r echo=FALSE}
+hist(datum$sulphates, main = "Sulphates", col = "blue")
+```
+
+
+Histogram showing the distribution of Sulphates. The data appears positively skewed.
+
+```{r echo=FALSE}
+hist(datum$alcohol, main = "Alcohol", col = "blue")
+```
+
+
+Histogram showing the distribution of Alcohol. The data appears positively skewed.
+
+```{r echo=FALSE}
+ggdensity(datum, x = "fixed.acidity", fill = "lightblue", title = 
+"Fixed Acidity") + stat_overlay_normal_density (color = "red", linetype = 
+"dashed")
+
+```
+
+
+Density plot of Fixed Acidity. Note that the distribution is approximately normal.
+```{r echo=FALSE}
+ggdensity(datum, x = "volatile.acidity", fill = "lightblue", title = 
+"Volatile Acidity") + stat_overlay_normal_density(color = "red", linetype = 
+"dashed")
+
+```
+
+
+Density plot of Volatile Acidity. Note that the distribution is approximately normal, but slightly skewed.
+```{r echo=FALSE}
+ggdensity(datum, x = "citric.acid", fill = "lightblue", title = 
+"Citric Acid") + stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of Citric Acid. Note that it is multimodal and positively skewed.
+```{r echo=FALSE}
+ggdensity(datum, x = "residual.sugar", fill = "lightblue", title = 
+"Residual Sugar") + stat_overlay_normal_density(color = "red", linetype =
+"dashed")
+
+```
+
+
+Density plot of Residual Sugar. Note that it is positively skewed.
+```{r echo=FALSE}
+ggdensity(datum, x = "chlorides", fill = "lightblue", title = "Chlorides") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of Chlorides. Note that the distribution is positively skewed and slighly multimodal.
+```{r echo=FALSE}
+ggdensity(datum, x = "free.sulfur.dioxide", fill = "lightblue", title = 
+"Free Sulfur Dioxide") + stat_overlay_normal_density(color = "red", linetype =
+"dashed")
+```
+
+
+Density plot of free sulfur dioxide. Note that the distribution is approximately normal.
+```{r echo=FALSE}
+
+ggdensity(datum, x = "total.sulfur.dioxide", fill = "lightblue", title = 
+"Total Sulfur Dioxide") + stat_overlay_normal_density(color = "red", linetype =
+"dashed")
+```
+
+
+Density plot of total sulfur dioxide. Note that the distribution is approximately normal.
+```{r echo=FALSE}
+ggdensity(datum, x = "density", fill = "lightblue", title = "Density") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of Density. Note that the distribution is approximately normal, but apppears multimodal.
+```{r echo=FALSE}
+ggdensity(datum, x = "pH", fill = "lightblue", title = "pH") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of pH. Note that the distribution is approximately normal.
+```{r echo=FALSE}
+ggdensity(datum, x = "sulphates", fill = "lightblue", title = "Sulphates") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of Sulphates. Note that the distribution is approximately normal.
+```{r echo=FALSE}
+ggdensity(datum, x = "alcohol", fill = "lightblue", title = "Alcohol") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of Alcohol. Note that the variable appears positively skewed and multimodal.
+
+
+To reiterate, many of the independent variables appear positively skewed. The distribution of these variables may benefit from a log transformation. 
+
+Several of the variables also look to be multimodal, including: citric acid, residual sugar, density, and alcohol. Their distributions follow a similar pattern; however, which makes me think we are looking at 3 different varieties of white wine in the dataset.
+
+I will take a look at a skewness to confirm. Values greater than 0.5 indicate the data is positively skewed.
+
+
+```{r echo=FALSE}
+#This is an assessment of skewness in the dataset.
+tmpdata = subset(datum, select = -c(quality))
+print(skewness(tmpdata))
+```
+
+
+The above variables with a skewness of greater than 0.5 are positively skewed. I'm going to transform the data using a log transformation. Hereafter, fixed acidity will refer to log(fixed acidity), volatile acidity refers to log(volatile acidity), citric acid refers to log(citric acid + 0.1), residual sugar refers to log(residual sugar), chlorides refers to log(chlorides), free sulfur dioxide refers to log(free sulfur dioxide), density refers to log(density), and sulphates refers to log(sulphates).
+
+```{r include=FALSE}
+# Log transformation of several of the independent variables. I added 0.1 to 
+#each citric acid measurement because that variable includes 0's.
+datum$fixed.acidity=log(datum$fixed.acidity)
+datum$volatile.acidity=log(datum$volatile.acidity)
+datum$citric.acid=log(0.1+datum$citric.acid)
+datum$residual.sugar=log(datum$residual.sugar)
+datum$chlorides=log(datum$chlorides)
+datum$free.sulfur.dioxide=log(datum$free.sulfur.dioxide)
+datum$density=log(datum$density)
+datum$sulphates=log(datum$sulphates)
+```
+
+
+
+Taking a look at the transformed data.
+
+```{r echo=FALSE}
+boxplot(datum$fixed.acidity, main="Fixed Acidity", col = "red")
+
+```
+
+
+Boxplot showing the distribution of Fixed Acidity. The data appears to have fewer outliers following a log transformation.
+
+```{r echo=FALSE}
+boxplot(datum$volatile.acidity, main="Volatile Acidity", col = "red")
+
+```
+
+
+Boxplot showing the distribution of Volatile Acidity. The data appears positively skewed.
+
+```{r echo=FALSE}
+boxplot(datum$citric.acid, main="Citric Acid", col = "red")
+
+```
+
+
+Boxplot showing the distribution of Citric Acid. The data appears positively skewed.
+
+```{r echo=FALSE}
+boxplot(datum$residual.sugar, main="Residual Sugar", col = "red")
+
+```
+
+
+Boxplot showing the distribution of Residual Sugar. The data appears positively skewed.
+
+```{r echo=FALSE}
+boxplot(datum$chlorides, main="Chlorides", col = "red")
+
+```
+
+
+Boxplot showing the distribution of Chlorides. The data appears to have fewer outliers following a log transformation.
+
+```{r echo=FALSE}
+boxplot(datum$free.sulfur.dioxide, main="Free Sulfur Dioxide", col = "red")
+
+```
+
+
+Boxplot showing the distribution of Free Sulfur Dioxide. The data appears positively skewed.
+
+```{r echo=FALSE}
+boxplot(datum$density, main = "Density", col = "red")
+
+```
+
+
+Boxplot showing the distribution of Density. The data appears to have fewer outliers following a log transformation.
+
+```{r echo=FALSE}
+boxplot(datum$sulphates, main="Sulphates", col = "red")
+
+```
+
+
+Boxplot showing the distribution of Sulphates. The data appears positively skewed.
+
+
+
+
+To reiterate, the boxplots show fewer outliers for each of the transformed variables.
+
+```{r echo=FALSE}
+ggdensity(datum, x = "fixed.acidity", fill = "lightblue", title = 
+            "Fixed Acidity") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of Fixed Acidity. Note that the data appear to be approximately normally distributed.
+```{r echo=FALSE}
+ggdensity(datum, x = "volatile.acidity", fill = "lightblue", title = 
+            "Volatile Acidity") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of Volatile Acidity. Note that the data appear to be approximately normally distributed.
+```{r echo=FALSE}
+ggdensity(datum, x = "citric.acid", fill = "lightblue", title = "Citric Acid") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of Citric Acid. Note that the data does not appear to have changed much with the log transformation.
+```{r echo=FALSE}
+ggdensity(datum, x = "residual.sugar", fill = "lightblue", title = 
+            "Residual Sugar") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of Residual Sugar. Note that the data appears to be more strongly multimodal following log transformation.
+```{r echo=FALSE}
+ggdensity(datum, x = "chlorides", fill = "lightblue", title = "chlorides") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of Chlorides. Note that the data appear to be approximately normally distributed.
+```{r echo=FALSE}
+ggdensity(datum, x = "free.sulfur.dioxide", fill = "lightblue", title = 
+            "Free Sulfur Dioxide") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of Free Sulfur Dioxide. Note that the data appear to be approximately normally distributed.
+```{r echo=FALSE}
+ggdensity(datum, x = "density", fill = "lightblue", title = "Density") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of Density. Note that the data appear to be approximately normally distributed, but also multimodal.
+```{r echo=FALSE}
+ggdensity(datum, x = "sulphates", fill = "lightblue", title = "Sulphates") +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+```
+
+
+Density plot of Sulphates. Note that the data appear to be approximately normally distributed.
+```{r echo=FALSE}
+#Taking another look at skewness after a log transformation.
+tmpdata = subset(datum, select = -c(quality))
+print(skewness(tmpdata))
+```
+
+There are still some problems with skewness, but overall, the dataset appears to be more normally distributed.
+
+# Univariate Analysis
+
+## Structure of the dataset
+
+There are 4,898 white wine evaluations in the dataset. The data includes 11 biochemical independent variables (fixed acidity, volatile acidity, citric acid, residual sugar, chlorides, free sulfur dioxide, total sulfur dioxide, density, pH, sulphates, and alcohol) and 1 quality score for each wine. Quality score refers to the median of at least 3 evaluations made by wine experts, where each expert graded the wine quality between 0 (very bad) and 10 (very excellent).
+
+Other observations:
+  *Wine experts rated most of the white wines as average. There were no 0, 1, 2, or 10 quality ratings given. 0.4% of wines were given a 3, and 0.1% were given a 9. 75% of the wines were given a quality score of either 5 or 6.
+  *Several of the independent variables appear to be multimodal, including: citric acid, density, residual sugar, and alcohol.
+
+## Main feature of interset in the dataset
+The median quality score given to each white wine based on at least 3 evaluations made by wine experts is the main feature of interest in the dataset. While the biochemical properties of each wine are factual characteristics, the quality score is subjective. It will be interesting to see if the biochemical properties of the wines are a good predictor of the quality score given by experts. If the experts agree on the quality of wines and a good model can predict what score experts are likely to give a wine based on its biochemical properties, I imagine we would feel very confident in the opinions of wine experts, and I imagine wine makers would be happy to have a virtual biochemical recipe for making expert approved quality wines.
+
+## Supporting features
+Of the 11 biochemical independent variables in the dataset, I would predict that citric acid, residual sugar, density, and alcohol would be the best predictors of wine quality. I think in general humans are able to taste differences in sweetness and alcohol content, and are often able to detect the presence of citrus flavors in a beverage.
+
+## New variables
+
+I created a binary variable "goodorbad" where I assigned "0" to wines with a quality score less than 6, and "1" to wines with a score greater than 6. I thought this might be interesting given there were relatively few score in either tails of the data.
+
+## Unusual distributions and transformations
+Most of the independent variables were positively skewed with outliers (as discussed previously). I applied a log transformation to fixed and total acidity, residual sugar, chlorides, sulphates, and alcohol to account for skewness. I added 0.1 to each value for citric acid and then log transformed the variable as citric acid included "0s" in the data. Citric acid, residual sugar, density, and alcohol all appear to be multimodal.
+
+# Bivariate Plots Section
+
+I will be looking at the relationships between the independent variables and the relationship between the independent variables and the dependent variable "quality". I'm going to start with a correlation matrix for the independent variables, followed by plots for the independent variables across each level of quality score from 3 to 9.
+
+
+It looks like many of the independent variables could be related based on their titles. Several variables include the word "acid", and there is a pH variable as well. I know from brewing cider and beer that "alcohol", "residual sugar", and "density" are likely related. There are also two variables that deal with sulfur dioxide.This suggests collinearity and variation inflation may be a problem in the analysis.
+
+```{r echo=FALSE}
+tmpdata = subset(datum, select = -c(quality))
+cor(tmpdata)
+```
+
+
+Correlation matrix of the independent variables. Note that many of the variables are strongly correlated.
+```{r echo=FALSE}
+corrplot(cor(tmpdata), method = "circle")
+```
+
+
+Correlation plot of the independent variables. Note that many of the variables are strongly correlated.
+
+Many of the independent variables are correlated. For example, density and residual sugar are positively correlated (r = 0.75) and density and alcohol are negatively correlated (r = -0.78). This suggests that some of the variables are redundant (i.e. measure the same thing) and should not be included in the analysis. 
+
+The following 10 scatterplots show the linear relationships between pairings of independent variables with an r > 0.4, or r < -0.4. The scatterplots include labels for the x and y axis and are intended to illustrate the existence of the linear relationships between variables. 
+```{r echo=FALSE}
+plot(datum$fixed.acidity, datum$pH, xlab = "Fixed Acidity (g/dm^3)", ylab = "pH"
+     , col ="blue")
+
+plot(datum$residual.sugar, datum$total.sulfur.dioxide, xlab = 
+       "Residual Sugar (g/dm^3)", ylab = "Total Sulfur Dioxide (mg/dm^3)", col 
+     = "blue")
+
+plot(datum$residual.sugar, datum$density, xlab ="Residual Sugar (g/dm^3)",ylab = 
+       "Density (g/cm^3)", col = "blue")
+
+plot(datum$residual.sugar, datum$alcohol, xlab ="Residual Sugar (g/dm^3)",ylab = 
+       "Alcohol (%)", col = "blue")
+
+plot(datum$chlorides, datum$density, xlab = "Chlorides (g/dm^3)", ylab = 
+       "Density (g/cm^3)",col = "blue")
+
+plot(datum$chlorides, datum$alcohol, xlab = "Chlorides (g/dm^3)", ylab = 
+       "Alcohol (%)", col = "blue")
+
+plot(datum$total.sulfur.dioxide, datum$free.sulfur.dioxide, xlab = 
+       "Total Sulfur Dioxide (mg/dm^3)", ylab = 
+       "Free Sulfur Dioxide (mg/dm^3)", col = "blue")
+
+plot(datum$total.sulfur.dioxide, datum$density, xlab = 
+       "Total Sulfur Dioxide (mg/dm^3)",ylab = "Density (g/cm^3)", col = "blue")
+
+plot(datum$total.sulfur.dioxide, datum$alcohol, xlab = "Total Sulfur Dioxide 
+     (mg/dm^3)", ylab = "Alcohol (%)", col = "blue")
+
+plot(datum$alcohol, datum$density, xlab = "Alcohol (%)", ylab = 
+       "Density (g/cm^3)", col = "blue")
+```
+
+
+Because of the extent of the above linear relationships between the independent variables, I will run a global model on a copy of the dataset where "quality" is still a continuous variable and check the results for variation inflation.
+```{r echo=FALSE}
+#This is a multivariate linear regression model.
+r1=lm(quality~ fixed.acidity + volatile.acidity + citric.acid+residual.sugar+
+        chlorides+free.sulfur.dioxide+total.sulfur.dioxide+density+pH+sulphates
+      +alcohol, data=datum1)
+
+#Checking variation inflation.
+vif(r1)
+```
+
+
+A vif > 5 indicates collinearity is a problem. This suggests at least one variable should be excluded from the analysis or PCA or PLS might be a good option for this data if "quality" is used as a continuous variable. I'm going to remove the variable with the highest vif from the global model, which is "density".
+```{r echo=FALSE}
+#This is a multivariate linear regression model.
+r2=lm(quality~ fixed.acidity + volatile.acidity + citric.acid+residual.sugar+
+        chlorides+free.sulfur.dioxide+total.sulfur.dioxide+pH+sulphates+alcohol, 
+      data=datum1)
+```
+
+
+Checking vif of the new model.
+```{r echo=FALSE}
+#Checking variation inflation again.
+vif(r2)
+```
+
+
+That seems to have fixed the problem. The remaining variables all have a vif < 5 after removing "density".
+
+The following boxplots will look at the distribution of each independent variable for each wine quality score ranging from 3 to 9.
+
+```{r echo=FALSE}
+colours = brewer.pal(7,"GnBu")
+boxplot(datum$fixed.acidity ~ datum$quality, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Fixed Acidity by Quality Score', 
+        ylab = 'Fixed Acidity (g/dm^3)', xlab = 'Quality Score',
+        names = c('3', '4', '5', '6', '7', '8', '9'))
+
+```
+
+
+
+```{r echo=FALSE}
+boxplot(datum$volatile.acidity ~ datum$quality, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Volatile Acidity by Quality Score', 
+        ylab = 'Volatile Acidity (g/dm^3)', xlab = 'Quality Score',
+        names = c('3', '4', '5', '6', '7', '8', '9'))
+
+```
+
+
+
+```{r echo=FALSE}
+boxplot(datum$citric.acid ~ datum$quality, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Citric Acid by Quality Score', 
+        ylab = 'Citric Acid (g/dm^3)', xlab = 'Quality Score',
+        names = c('3', '4', '5', '6', '7', '8', '9'))
+
+```
+
+
+
+```{r echo=FALSE}
+boxplot(datum$residual.sugar ~ datum$quality, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Residual Sugar by Quality Score', 
+        ylab = 'Residual Sugar (g/dm^3)', xlab = 'Quality Score',
+        names = c('3', '4', '5', '6', '7', '8', '9'))
+
+```
+
+
+
+
+```{r echo=FALSE}
+boxplot(datum$free.sulfur.dioxide ~ datum$quality, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Free Sulfur Dioxide by Quality Score', 
+        ylab = 'Free Sulfur Dioxide (mg/dm^3)', xlab = 'Quality Score',
+        names = c('3', '4', '5', '6', '7', '8', '9'))
+
+```
+
+
+
+```{r echo=FALSE}
+boxplot(datum$total.sulfur.dioxide ~ datum$quality, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Total Sulfur Dioxide by Quality Score', 
+        ylab = 'Total Sulfur Dioxide (mg/dm^3)', xlab = 'Quality Score',
+        names = c('3', '4', '5', '6', '7', '8', '9'))
+
+```
+
+
+
+```{r echo=FALSE}
+boxplot(datum$pH ~ datum$quality, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'pH by Quality Score', 
+        ylab = 'pH', xlab = 'Quality Score',
+        names = c('3', '4', '5', '6', '7', '8', '9'))
+
+```
+
+
+
+```{r echo=FALSE}
+boxplot(datum$sulphates ~ datum$quality, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Sulphates by Quality Score', 
+        ylab = 'Sulphates (g/dm^3)', xlab = 'Quality Score',
+        names = c('3', '4', '5', '6', '7', '8', '9'))
+
+```
+
+
+
+```{r echo=FALSE}
+boxplot(datum$chlorides ~ datum$quality, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Chlorides by Quality Score', 
+        ylab = 'Chlorides (g/dm^3)', xlab = 'Quality Score',
+        names = c('3', '4', '5', '6', '7', '8', '9'))
+
+```
+
+
+
+```{r echo=FALSE}
+boxplot(datum$alcohol ~ datum$quality, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Alcohol Content by Quality Score', 
+        ylab = 'Alcohol (%)', xlab = 'Quality Score',
+        names = c('3', '4', '5', '6', '7', '8', '9'))
+```
+
+
+
+```{r echo=FALSE}
+plot(datum$fixed.acidity, datum$quality, xlab = "Fixed Acidity (g/dm^3)", ylab = 
+       "Quality Score", col = "blue")
+
+```
+
+
+
+```{r echo=FALSE}
+ 
+plot(datum$volatile.acidity, datum$quality, xlab = "Volatile Acidity (g/dm^3)", 
+     ylab = "Quality Score", col = "blue")
+
+```
+
+
+
+```{r echo=FALSE}
+
+plot(datum$citric.acid, datum$quality, xlab = "Citric Acid (g/dm^3)", ylab =
+       "Quality Score", col = "blue")
+
+```
+
+
+
+```{r echo=FALSE}
+
+plot(datum$residual.sugar, datum$quality, xlab = "Residual Sugar (g/dm^3)", 
+     ylab = "Quality Score", col = "blue")
+
+```
+
+
+
+```{r echo=FALSE}
+
+plot(datum$chlorides, datum$quality, xlab = "Chlorides", ylab = "Score", col =
+       "blue")
+
+```
+
+
+
+```{r echo=FALSE}
+
+plot(datum$free.sulfur.dioxide, datum$quality, xlab = "Free Sulfur Dioxide 
+     (mg/dm^3)", ylab = "Quality Score", col = "blue")
+
+```
+
+
+
+```{r echo=FALSE}
+
+plot(datum$total.sulfur.dioxide, datum$quality, xlab = "Total Sulfur Dioxide 
+     (mg/dm^3)", ylab = "Quality Score", col = "blue")
+
+```
+
+
+
+```{r echo=FALSE}
+
+plot(datum$pH, datum$quality, xlab = "pH", ylab = "Quality Score", col = "blue")
+
+```
+
+
+
+```{r echo=FALSE}
+
+plot(datum$sulphates, datum$quality, xlab = "Sulphates (g/dm^3)", ylab = 
+       "Quality Score", col = "blue")
+
+```
+
+
+
+```{r echo=FALSE}
+plot(datum$alcohol, datum$quality, xlab = "Alcohol (%)", ylab = "Quality Score", 
+     col = "blue")
+```
+
+
+There don't seem to be strong linear relationships between many of the predictor variables and the response. The "alcohol" x "quality" scatterplot shows a bit of a slant that might indicate a linear relationship. To a lesser degree, that is also true of chlorides, volatile acidity, and total sulfur dioxide.
+
+I'm going to take a look at differences in each independent variable by wine quality score. I'll use plots that show the mean (of each variable) for the range of quality scores (3 to 9) and 95% confidence intervals around the mean. Where there is overlap between 95% confidence intervals for two means, there is likely not a statistically significant difference between those means, alphaa = 0.05.
+```{r echo=FALSE}
+# This is a function I wrote to create plots with means 
+#and 95% confidence intervals.
+barplotwci = function(x,y){
+	Mean = tapply(x,y,mean) 
+	sd = tapply(x,y,sd)
+	n = summary(y)
+	sqrtn = sqrt(n)
+	se = sd / sqrtn
+	me = 1.96 * se 
+	Quality = levels(y) 
+	lower = Mean - me 
+	upper = Mean + me 
+	df = data.frame(Quality, Mean, lower, upper) 
+	plot =return(ggplot(df, aes(Quality, Mean)) + geom_point() +   
+	               geom_errorbar(aes(ymin = lower, ymax = upper)))
+	return(plot)
+}
+```
+```{r echo=FALSE}
+#Using the above function to create plots.
+fa=barplotwci(datum$fixed.acidity, datum$quality)
+fa = fa+labs(title = "Mean Fixed Acidity & 95% CI", x= "Wine Quality", 
+             y = "Mean Fixed Acidity (g/dm^3)")
+fa
+
+```
+
+
+Mean fixed acidity appears to decrease as wine quality score increases; however, the wide confidence intervals for quality = 3, (n = 20), and quality = 9, (n = 5), overlap all of the intermediate confidence intervals.
+```{r echo=FALSE}
+
+va=barplotwci(datum$volatile.acidity, datum$quality)
+va = va+labs(title = "Mean Volatile Acidity & 95% CI", x= "Wine Quality", 
+             y = "Mean Volatile Acidity (g/dm^3)")
+va
+
+```
+
+
+Mean volatile acidity appears to have a serpentine relationship with wine quality score; however, again - wide confidence intervals for quality = 3, (n = 20), and quality = 9, (n = 5), overlap almost all of the intermediate confidence intervals.
+```{r echo=FALSE}
+ca=barplotwci(datum$citric.acid, datum$quality)
+ca = ca+labs(title = "Mean Citric Acid Content & 95% CI", x= "Wine Quality", 
+             y = "Mean Citric Acid Content (g/dm^3)")
+ca
+
+```
+
+
+Mean citric acid content does not appear to have a linear relationship with wine quality score, as the majority of confidence intervals in the figure overlap.
+```{r echo=FALSE}
+rs=barplotwci(datum$residual.sugar, datum$quality)
+rs = rs+labs(title = "Mean Residual Sugar & 95% CI", x= "Wine Quality", 
+             y = "Mean Residual Sugar (g/dm^3)")
+rs
+
+```
+
+
+Mean residual sugar tends to decrease from a wine quality score of 5 to a wine quality score of 9, but wide confidence intervals in the tails exclude the possibility of significant differences.
+```{r echo=FALSE}
+fs=barplotwci(datum$free.sulfur.dioxide, datum$quality)
+fs = fs+labs(title = "Mean Free Sulfur Dioxide & 95% CI", x= "Wine Quality", 
+             y = "Mean Free Sulfur Dioxide (mg/dm^3)")
+fs
+
+```
+
+
+Mean free sulfur dioxide does not appear to have a linear relationship with wine quality score, as the majority of confidence intervals in the figure overlap.
+```{r echo=FALSE}
+ts=barplotwci(datum$total.sulfur.dioxide, datum$quality)
+ts = ts+labs(title = "Mean Total Sulfur Dioxide & 95% CI", x= "Wine Quality", 
+             y = "Mean Total Sulfur Dioxide (mg/dm^3)")
+ts
+
+```
+
+
+Mean total sulfur dioxide tends to decrease from a wine quality score of 5 to a wine quality score of 9, but wide confidence intervals in the tails exclude the possibility of significant differences.
+```{r echo=FALSE}
+ph=barplotwci(datum$pH, datum$quality)
+ph = ph+labs(title = "Mean pH & 95% CI", x= "Wine Quality", y = "Mean pH")
+ph
+
+```
+
+
+Mean pH appears to increase as wine quality score increases; however, the wide confidence intervals for quality = 3, (n = 20), and quality = 9, (n = 5), overlap all of the intermediate confidence intervals.
+```{r echo=FALSE}
+sl=barplotwci(datum$sulphates, datum$quality)
+sl = sl+labs(title = "Mean Sulphate Content & 95% CI", x= "Wine Quality", 
+             y = "Mean Sulphate Content (g/dm^3)")
+sl
+
+```
+
+Mean sulphate content appears to increase as wine quality score increases up to a quality score of 7; however, the wide confidence intervals for quality = 3, (n = 20), and quality = 9, (n = 5), overlap all of the intermediate confidence intervals.
+```{r echo=FALSE}
+al=barplotwci(datum$alcohol, datum$quality)
+al = al+labs(title = "Mean Alcohol Content & 95% CI", x= "Wine Quality", 
+             y = "Mean Alcohol Content (%)")
+al
+```
+
+
+Mean alcohol content appears to increase as wine quality score increases; however, the wide confidence intervals for quality = 3, (n = 20), and quality = 9, (n = 5), overlap all of the intermediate confidence intervals.
+
+
+Overall, there are very few wines with a quality score of 3 or 9, which contributes to the wide confidence intervals for those quality scores in the preceding figures. With respect to the means; however, there do seem to be some linear relationships between several of the independent variables and wine quality score. I'm going to look at more generalized version of this analysis using the binary "goodorbad" variable I created. I'm hoping this will show some general trends and reduce the width of my confidence intervals.
+```{r echo=FALSE}
+library("RColorBrewer")
+datum$goodorbad=datum1$goodorbad
+colours = brewer.pal(7,"BuGn")
+boxplot(datum$fixed.acidity ~ datum$goodorbad, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Fixed Acidity by Binary Quality Score', 
+        ylab = 'Fixed Acidity(g/dm^3)', xlab = 'Binary Quality Score',
+        names = c('Bad Wine', 'Good Wine'))
+
+```
+
+
+Distribution of Fixed Acidity by Binary Quality Score.
+```{r echo=FALSE}
+boxplot(datum$volatile.acidity ~ datum$goodorbad, range = 1, outline = TRUE,
+        col = colours,
+        main = 'Volatile Acidity by Binary Quality Score', 
+        ylab = 'Volatile Acidity(g/dm^3)', xlab = 'Binary Quality Score',
+        names = c('Bad Wine', 'Good Wine'))
+
+```
+
+
+Distribution of Volatile Acidity by Binary Quality Score.
+
+```{r echo=FALSE}
+boxplot(datum$citric.acid ~ datum$goodorbad, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Citric Acid by Binary Quality Score', 
+        ylab = 'Citric Acid (g/dm^3)', xlab = 'Binary Quality Score',
+        names = c('Bad Wine', 'Good Wine'))
+
+```
+
+
+Distribution of Citric Acid by Binary Quality Score.
+
+```{r echo=FALSE}
+boxplot(datum$residual.sugar ~ datum$goodorbad, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Residual Sugar by Binary Quality Score', 
+        ylab = 'Residual Sugar (g/dm^3)', xlab = 'Binary Quality Score',
+        names = c('Bad Wine', 'Good Wine'))
+
+```
+
+
+Distribution of Residual Sugar by Binary Quality Score.
+
+```{r echo=FALSE}
+boxplot(datum$free.sulfur.dioxide ~ datum$goodorbad, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Free Sulfur Dioxide by Binary Quality Score', 
+        ylab = 'Free Sulfur Dioxide (mg/dm^3)', xlab = 'Binary Quality Score',
+        names = c('Bad Wine', 'Good Wine'))
+
+```
+
+
+Distribution of Free Sulfur Dioxide by Binary Quality Score.
+
+
+```{r echo=FALSE}
+boxplot(datum$total.sulfur.dioxide ~ datum$goodorbad, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Total Sulfur Dioxide by Binary Quality Score', 
+        ylab = 'Total Sulfur Dioxide (mg/dm^3)', xlab = 'Binary Quality Score',
+        names = c('Bad Wine', 'Good Wine'))
+
+```
+
+
+Distribution of Total Sulfur Dioxide by Binary Quality Score.
+
+```{r echo=FALSE}
+boxplot(datum$pH ~ datum$goodorbad, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'pH by Binary Quality Score', 
+        ylab = 'pH', xlab = 'Binary Quality Score',
+        names = c('Bad Wine', 'Good Wine'))
+
+```
+
+
+Distribution of pH by Binary Quality Score.
+
+```{r echo=FALSE}
+boxplot(datum$sulphates ~ datum$goodorbad, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Sulphates by Binary Quality Score', 
+        ylab = 'Sulphates (g/dm^3)', xlab = 'Binary Quality Score',
+        names = c('Bad Wine', 'Good Wine'))
+
+```
+
+
+Distribution of Sulphates by Binary Quality Score.
+
+```{r echo=FALSE}
+boxplot(datum$chlorides ~ datum$goodorbad, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Chlorides by Binary Quality Score', 
+        ylab = 'Chlorides (g/dm^3)', xlab = 'Binary Quality Score',
+        names = c('Bad Wine', 'Good Wine'))
+
+```
+
+
+Distribution of Chlorides by Binary Quality Score.
+
+```{r echo=FALSE}
+boxplot(datum$alcohol ~ datum$goodorbad, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Alcohol Content by Binary Quality Score', 
+        ylab = 'Alcohol(%)', xlab = 'Binary Quality Score',
+        names = c('Bad Wine', 'Good Wine'))
+```
+
+
+Distribution of Alcohol by Binary Quality Score.
+
+```{r echo=FALSE}
+barplotwci2 = function(x,y){
+	Mean = tapply(x,y,mean) 
+	sd = tapply(x,y,sd)
+	n = summary(y)
+	sqrtn = sqrt(n)
+	se = sd / sqrtn
+	me = 1.96 * se 
+	Quality = levels(y) 
+	lower = Mean - me 
+	upper = Mean + me 
+	df = data.frame(Quality, Mean, lower, upper) 
+	plot =return(ggplot(df, aes(Quality, Mean)) + geom_point() +   
+	               geom_errorbar(aes(ymin = lower, ymax = upper))+
+	               scale_x_discrete(labels = c('Bad Wine','Good Wine')))
+	return(plot)
+}
+
+fa=barplotwci2(datum$fixed.acidity, datum1$goodorbad)
+fa = fa+labs(title = "Mean Fixed Acidity & 95% CI", x= "Binary Quality Score", 
+             y = "Mean Fixed Acidity (g/dm^3)")
+fa
+
+```
+
+
+Mean fixed acidity is significantly lower in "good" wines versus "bad" wines.
+```{r echo=FALSE}
+va=barplotwci2(datum$volatile.acidity, datum1$goodorbad)
+va = va+labs(title = "Mean Volatile Acidity & 95% CI", x= "Binary Quality Score", 
+             y = "Mean Volatile Acidity (g/dm^3)",
+             names = c('Bad Wine', 'Good Wine'))
+va
+
+```
+
+
+Mean volatile acidity is significantly lower in "good" wines versus "bad" wines.
+```{r echo=FALSE}
+ca=barplotwci2(datum$citric.acid, datum1$goodorbad)
+ca = ca+labs(title = "Mean Citric Acid Content & 95% CI", x= "Binary Quality Score", 
+             y = "Mean Citric Acid Content (g/dm^3)")
+ca
+
+```
+
+
+Mean citric acid content is significantly higher in "good" wines versus "bad" wines.
+```{r echo=FALSE}
+rs=barplotwci(datum$residual.sugar, datum1$goodorbad)
+rs = rs+labs(title = "Mean Residual Sugar & 95% CI", x= "Binary Quality Score", 
+             y = "Mean Residual Sugar (g/dm^3)")
+rs
+
+```
+
+
+Mean residual sugar is significantly lower in "good" wines versus "bad" wines.
+```{r echo=FALSE}
+fs=barplotwci2(datum$free.sulfur.dioxide, datum1$goodorbad)
+fs = fs+labs(title = "Mean Free Sulfur Dioxide & 95% CI", x= "Binary Quality Score", 
+             y = "Mean Free Sulfur Dioxide (mg/dm^3)")
+fs
+
+```
+
+
+Mean free sulfur dioxide is significantly higher in "good" wines versus "bad" wines.
+```{r echo=FALSE}
+ts=barplotwci2(datum$total.sulfur.dioxide, datum1$goodorbad)
+ts = ts+labs(title = "Mean Total Sulfur Dioxide & 95% CI", x= "Binary Quality Score", 
+             y = "Mean Total Sulfur Dioxide Content (mg/dm^3)")
+ts
+
+```
+
+
+Mean total sulfur dioxide is significantly lower in "good" wines versus "bad" wines.
+```{r echo=FALSE}
+ph=barplotwci(datum$pH, datum1$goodorbad)
+ph = ph+labs(title = "Mean pH & 95% CI", x= "Binary Quality Score", 
+             y = "Mean pH")
+ph
+
+```
+
+
+Mean pH is significantly higher in "good" wines versus "bad" wines.
+```{r echo=FALSE}
+sl=barplotwci2(datum$sulphates, datum1$goodorbad)
+sl = sl+labs(title = "Mean Sulphate Content & 95% CI", x= "Binary Quality Score", 
+             y = "Mean Alcohol Content (%)")
+sl
+
+```
+
+
+Mean sulphate content is significantly higher in "good" wines versus "bad" wines.
+```{r echo=FALSE}
+al=barplotwci2(datum$alcohol, datum1$goodorbad)
+al = al+labs(title = "Mean Alcohol Content & 95% CI", x= "Binary Quality Score", 
+             y = "Mean Alcohol Content (%)")
+al
+```
+
+
+Mean alcohol content is significantly higher in "good" wines versus "bad" wines.
+
+
+To summarize, a "good" wine is lower in fixed acidity, volatile acidity, residual sugar, and total sulfur dioxide than a "bad" wine. A "good" wine is also higher in citric acid, free sulfur dioxide, pH, sulphates, and alcohol than a "bad" wine.
+
+
+# Bivariate Analysis
+
+I initially suspected that many of the independent variables would be correlated based on their titles, for example variable titles that included the word "acid" as well as "pH", or variables that appeared to be separate forms of sulfur dioxide. 
+
+I found that many of the independent variables were correlated. Fixed acidity was correlated with pH. Total sulfur dioxide was correlated with free sulfur dioxide, residual sugar, density, and alchol. Residual sugar was additionally correlated with density, and alcohol. Chlorides were correlated with density and alcohol as well. Finally, density and alcohol were correlated. The strongest correlations (e.g. r > 0.7 or r < -0.7) were between density, alcohol, and residual sugar.
+
+Because of these correlations among the independent variables, I suspected variation inflation might be a problem. To check, I ran a global linear model and ran a test for variation inflation. The test showed that many variables exhibited a VIF great than 5, indicating variation inflation was a problem. To correct the issue, I removed the variable with the highest VIF, which was "density". After removing "density", the following VIF test indicated that variation inflation was no longer a problem.
+
+Visually, there did not appear to be linear relationships between the independent variables and wine quality score, with the exception of "alcohol" and to a lesser degree, "chlorides", "volatile acidity", and "total sulfur dioxide".
+
+Looking at the mean values for the independent variables for each wine quality score (3 - 9) revealed that there were some linear trends. For example, mean fixed acidity decreased from a quality score of 3 to 8; however, wide 95% confidence intervals for a quality score of 3 (n -20), and 9 (n = 5) eliminated the possibility of significant differences in mean fixed acidity across quality scores. Mean total sulfur dioxide showed similar trends and equally suffered from wide confidence intervals at either end of the spectrum of wine quality scores. Conversely, mean pH, mean sulphates, and mean alcohol all tended to increase with wine quality score, although wide confidence intervals and small sample sizes at the upper and lower ends of the quality scores also likely eliminated the possibility of significant differences between the respective means. 
+
+Because there were very few wines with a quality score of 3 or 9, which contributed to the wide confidence intervals previously discussed, I chose to create a binary "goodorbad" variable to see if some of the above observed trends could be isolated in a more general analysis.
+
+Based on the means and 95% confidence intervals for "good" and "bad" wines, it appears as though experts consider a "good" wine to be lower in mean fixed acidity, mean volatile acidity, mean residual sugar, and mean total sulfur dioxide than a "bad" wine. A "good" wine also seems to be higher in mean citric acid, mean free sulfur dioxide, mean pH, mean sulphates, and mean alcohol than a "bad" wine.
+
+
+
+# Multivariate Plots Section
+
+
+I'm going to take a look at a few 3D scatterplots to examine the relationships between a couple groups of the independent variable. I covered these relationships above, but wanted to include a few additional plots.
+```{r echo=FALSE}
+#Creating 3D cloud scatterplots of two different groups of related variables.
+cloud(datum$alcohol ~ datum$residual.sugar*datum$density, ylab = "Density", xlab = "Residual Sugar", zlab = "Alcohol")
+
+```
+
+
+Linear relationship between alcohol, residual sugar and density. Density was removed from the analysis to reduce variation inflation.
+```{r echo=FALSE}
+cloud(datum$pH ~ datum$fixed.acidity*datum$citric.acid, ylab = "Citric Acid", xlab = "Fixed Acidity", zlab = "pH", col = 'red')
+```
+
+
+Linear relationship between pH, fixed acidity, and citric acid. The dataset includes many variables that a linear related, and this figure illustrates.
+```{r echo=FALSE}
+
+#Creating a couple more 3D plots.
+plotvar = datum$alcohol 
+nclr = 8 
+plotclr <- brewer.pal(nclr,"PuBu") 
+colornum <- cut(rank(plotvar), nclr, labels=FALSE)
+colcode <- plotclr[colornum] 
+
+plot.angle = 45
+scatterplot3d(datum$residual.sugar, datum$density, plotvar, type="h", 
+              angle=plot.angle, color=colcode, pch=20, cex.symbols=2, 
+  col.axis="gray", col.grid="gray",ylab = "Density", xlab = "Residual Sugar", 
+  zlab = "Alcohol")
+
+```
+```{r echo=FALSE}
+
+plotvar = datum$pH 
+nclr = 8 
+plotclr <- brewer.pal(nclr,"GnBu") 
+colornum <- cut(rank(plotvar), nclr, labels=FALSE)
+colcode <- plotclr[colornum] 
+
+plot.angle = 45
+scatterplot3d(datum$fixed.acidity, datum$citric.acid, plotvar, type="h", 
+              angle=plot.angle, color=colcode, pch=20, cex.symbols=2, 
+  col.axis="gray", col.grid="gray",ylab = "Citric Acid", xlab = "Fixed Acidity", 
+  zlab = "pH")
+
+
+```
+
+
+I'm going to run a few logistic regression models. I'll start with a global model that includes all of the independent variables (log transformed and otherwise), with the exception of "density", which I removed to reduce variation inflation earlier in the analysis. From there, I will remove variables that are not significant, until I'm left with a model with only significant variables.
+```{r echo=FALSE}
+datum$goodorbad = datum1$goodorbad
+#Running a global logistic regression model.
+r3 = glm(goodorbad~fixed.acidity+volatile.acidity+citric.acid+residual.sugar+
+           free.sulfur.dioxide+total.sulfur.dioxide+pH+sulphates+alcohol, 
+         family="binomial", data=datum)
+summary(r3)
+#Generates McFadden's R^2 for the global model.
+pR2(r3)["McFadden"]
+#Shows the relative importance of each variable in the model.
+varImp(r3)
+#Checking variation inflation in the model.
+vif(r3)
+```
+
+
+Citric acid and pH are the only two variables that are not significant (alpha < 0.05). Overall, this isn't a great model as it explains only about 23% (McFadden's R^2 = 0.23) of the variability in the data.
+```{r echo=FALSE}
+
+r4 = glm(goodorbad~volatile.acidity+residual.sugar+free.sulfur.dioxide+
+           total.sulfur.dioxide+sulphates+alcohol, family="binomial",
+         data=datum)
+summary(r4)
+pR2(r4)["McFadden"]
+varImp(r4)
+vif(r4)
+```
+
+
+This model is slightly better than the previous model. Removing citric acid and pH from the model had little effect on its explanatory power (McFadden's R^2 = 0.22 and delta AIC = 5.6). As all of the variables in the model are significant at alpha < 0.05, I'm going to stop with this model. Taking a look at the importance of each variable in the model, it appears as though alcohol content is the most important variable in terms of predicting whether wine experts will rate white wines as either "good" or "bad". Volatile acidity, free sulfur dioxide, and residual sugar are also important, but to a lesser degree. I'm going to test the model now to see how accurate it is in terms of predicting wine ratings. 
+```{r echo=FALSE}
+#Using the model to predict goodorbad wine rating. Then comparing observed 
+#versus predicted outcomes to assess the strength of the model.
+threshold=0.5
+predicted_values=ifelse(predict(r4,type="response")>threshold,1,0)
+actual_values=datum$goodorbad
+conf_matrix=table(predicted_values,actual_values)
+conf_matrix
+
+#Percentage of true positives.
+sensitivity=(2839/(2839+774))
+sensitivity
+
+#Percentage of true negative.
+specificity=(866/(866+774))
+specificity
+
+#Misclassification error rate.
+misClassError(actual_values, predicted_values, threshold=0.5)
+
+# Area under the ROC curve.
+plotROC(actual_values, predicted_values)
+
+```
+
+
+The model is pretty good (sensitivity = 0.79) at predicting when experts will rate a wine as "good"; however, it's a toss up when it comes to the model predicting when experts will correctly rate a wine as "bad" (specificity = 0.53). The misidentification error rate was also not great at 24%.
+
+# Multivariate Analysis
+
+The means and 95% confidence intervals for each of the independent variables for "good" and "bad" wines indicated that wine experts considered a "good" wine to be one that is significantly lower in mean fixed acidity, mean volatile acidity, mean residual sugar, and mean total sulfur dioxide than a "bad" wine. That portion of my analysis also indicated that wine experts considered a "good" white wine to be one that was higher in mean citric acid, mean free sulfur dioxide, mean pH, mean sulphates, and mean alcohol content than a "bad" wine. However, the significance of these differences was not apparent in the logistic regression models I ran. Taking a look at the importance of each variable in the model I ultimately selected, it appeared as though alcohol content was the most important variable in terms of predicting whether wine experts would rate white wines as either "good" or "bad". Volatile acidity, free sulfur dioxide, and residual sugar were also important, but to a lesser degree. The variables in the logistic regression model accounted for only 22% of the variance in whether or not experts considered a white wine to be "good". 
+
+# Final Plots and Summary
+
+    
+## Plot One
+```{r echo=FALSE}
+plot(datum$alcohol, datum$density,  
+  main = "Linear Relationship Between 
+     Wine Density & Alcohol Content", xlab = "Alcohol (% by volume)", ylab = 
+       "Density (g/cm^3)", col = 
+       "blue")
+
+```
+
+
+### Description One
+
+Relationship between wine density (g/cm^3), and alcohol content (% by volume) among 4,898 white wines sampled and scored for quality by wine experts. Wine density was removed from the analysis due its strong linear relationship with alcohol content, residual sugar, and other independent variables.
+
+## Plot Two
+```{r echo=FALSE}
+boxplot(datum$alcohol ~ datum$quality, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Alcohol Content (% by volume) by Quality Score', 
+        ylab = 'Alcohol (%)', xlab = 'Quality Score',
+        names = c('3', '4', '5', '6', '7', '8', '9'))
+```
+
+
+### Description Two
+
+Mean alcohol content (% by volume) and distribution of data with outliers for seven increasing wine quality scores. Quality scores were based on the median of at least three evaluations of 4,898 white wines by wine experts. Alcohol content was the strongest predictor of wine quality scores in the analysis. 
+
+## Plot Three
+```{r echo=FALSE}
+boxplot(datum$alcohol ~ datum$goodorbad, range = 1, outline = TRUE, 
+        col = colours,
+        main = 'Alcohol Content (% by volume) by Quality Score', 
+        ylab = 'Alcohol (%)', xlab = 'Quality Score',
+        names = c('Bad Wine', 'Good Wine'))
+```
+
+
+### Description Three
+
+Mean alcohol content (% by volume) and distribution of data with outliers for wines rated as "bad" versus "good". Quality scores were based on the median of at least three evaluations of 4,898 white wines by wine experts. Wines given a median quality score of 6 or above were considered "good" wines. Those that were given a median rating of 5 or less were considered "bad" wines. Alcohol content was the strongest predictor of wine quality scores in the analysis. 
+
+# Reflection
+
+The white wines data set contains information on almost 4,500 white wines and eleven various biochemical constituents. Starting with an analysis of independent variables in the dataset, it was clear the data contained many outliers and a generally positively skewed distribution. By looking at the relationships between the independent variables, it was clear that many of the variables were correlated and that variation inflation may be an issue in the analysis. I sought to correct these issues by log transforming 8 out of 11 of the independent variables in the dataset and by removing the variable "density" from the analysis due to high variation inflation.
+
+Very few of the independent variables were strongly linearly related to white wine quality scores. Those relationships that did appear to be linear (e.g. alcohol content) were complicated by small sample sizes in the tails, as the dataset did not include any wines that were given a median quality score of 1, 2, or 10, and only 20 that were given a 3, and 5 that were given a nine. As such, I created a generalized version of the wine quality scoring that considered wines to be either "good" or "bad". My analysis of this new dependent variable indicated that wine experts approved of wines that were well preserved (e.g. greater free sulfur dioxide), lower in acidity (e.g. lower fixed acidity), with a citrus flavor (e.g. high citric acid), and those that were high in alcohol content. My logistic regression model of these variables reinforced some of these findings to a degree. Alcohol content was the most important variable in the model I selected in terms of predicting whether wine experts would rate white wines as either "good" or "bad". Volatile acidity, free sulfur dioxide, and residual sugar were also important, but to a lesser degree. However, the variables in the logistic regression model accounted for only 22% of the variance in whether or not experts considered a white wine to be "good", and the model itself was mediocre in terms of predicting expert wine assessments.
+
+My analysis was somewhat limited by the nature of the dependent variable in the dataset. The wine quality score in the dataset represented the median of at least three scores for each wine provided by wine experts. The dataset does not include each individual score for each wine, nor does it include the number of ratings provided by the experts, or a measure of variability. Had that been the case, wines that received highly variable scores could have been removed from the analysis and perhaps resulted in clearer relationships between the variables. Also, I think it should be noted that althought these score were provided by wine experts, they are still subjective measures and therefore are likely to be highly variable and/or difficult to predict.
