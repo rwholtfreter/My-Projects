@@ -1,4 +1,4 @@
-# My-Projects
+# my-projects
 Collection of various projects from work and school that demostrate my technical abilitites. This is a work in progress, so please check back in the
 coming weeks for updates and additional projects.
 
